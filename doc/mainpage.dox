@@ -1,0 +1,71 @@
+/**
+@mainpage Interview case
+
+@section design Design explanation
+
+@subsection processes Processes 
+Based on the README.md use case, following processes could be defined:
+
+1. Reading of the ADC
+This processes flow has to be repeated twice. For both ADC1 and ADC2 this process will be followed.
+![Reading of the ADC and determining the angle](doc/adc_flow.PNG)
+
+2. Comparing angles
+Both ADC's will result in an angle, this done for safety reasons. Both angles need to be equal in order to continue torque determination. I did here the assumption that both needed to be equal. It is ofcourse also possible to continue torque determination if one of the two is valid, however I choose to be safe and both need to match since with only one valid pedal angle it can't be guaranteed that that value is correct. It can be that this one also has a lot of noise and therfor not valid.
+![Comparing the calculated angles](doc/angle_comparision_flow.PNG)
+
+3. Determining Torque
+At last torque needs to be determined from angle and obtained vehicle speed.
+After obtaining both inputs with the use of interpolation, the torque has to be determined. 
+Interpolation will be done by create two maps for vehicle speed = 0 km/h and vehicle speed = 50 k/h.
+![Determine torque with interpolation](doc/torque_determination.PNG)
+
+@subsection components Components
+Splitting the use case in processsteps/ flows helped me in determining what kind of software components are needed to make as much a possible reuse of components for the same functionality.
+I would split the software in following components.
+
+1. Angle calculator
+This component will calculate a single angle based on one ADC channel. The component will be independant from the ADC channel and therefor can be reused for both reading ADC1 and ADC2 since the channel will be passed as input.
+This component is also responsible for detecting errors on ADC reading and validating the calculated angle, which has to be between the bounderies of 0 and 30 degrees.
+
+2. Vehicle speed 
+I want to create a component for the vehicle speed. This to be able to stub the vehicle speed and provide a test vehicle speed during this assignment.
+In future release this vehicle speed will come (possibly via CAN) to the controller and I want to make the rest of the torque determination independant of the source of the vehicle speed.
+The same is already done with the adc driver.
+
+3. Interpolation 2 curves
+This component will do an interpolation based on two curves and a x-axis value, for which a y-axis value need to be determined. Both curves as the x-axis value will be the input of this component.
+By doing so this interpolation component can be reused in multiple occations where interpolation for example for a sensor is needed. It is not needed to redo all work, since only new curves can be passed to this component.
+In this assignement there is curve for vehicle speed 0km/h and for vehicle speed 50km/h.
+
+4. Interpolation 1 curve
+This component will only interpolate based on 1 curve and a x-axis value. 
+In this assignement this 1 curve will be the interpolated curve from the vehicle speed 0km/h and 50km/h curves.
+
+5. Torque determination
+This component will based on an angle and vehicle speed return a torque. Same applies here to split determination of the torque from the place where the result will be consumed. Changes to the torque determination in the future won't result in a change of the place where torque is consumed.
+
+6. Fault handler
+Eventhough the requirements are talking about illumination of a LED as said in future this will become a DTC and an error message on the instrument cluster.
+To prevent changing the Angle calculator and Vehicle speed component, where fault will be set, when the LED will change to a DTC, I propose to create a fault handler component which can be called from the other components and will in the end determine what fault reaction should be.
+
+@subsection testing testing
+In order to validate the assignement I defined some scenario's to cover 2 valid pedal angles (10 and 30 degrees) and one invalid pedal angle (80 degrees) at different vehicle speeds.
+Due to the filter on the adc I decided to run the part of reading the adc values 100 times (AMOUNT_READING_FILTER). In that case the filter can do it's work and filtered towards the value I put in.
+Afterwards I run the program to determine the torque.
+In the beginning I also clear all faults so every testcase runs without initial faults.
+
+
+@section remarks Remarks and suggestions
+
+Any remarks, suggestions or things that you like to point out?
+
+1. I think the way I currently do the interpolation can be improved by directly interpolate between both curves instead of doing the interpolation between two points, which first need to be determined. This is the single_interpolation.c function.
+
+2. I did the assumption that the pedal sensor is a 12V sensor instead of for example a 24V sensor, since a lot of automotive sensors are 12V. In case the sensor is 24V, MAX_VOLTAGE needs to be adjusted to 24.0.
+
+3. Currently it is also not possible to return a negative torque, as shown in the image for curve 50km/h and a pedal angle below 15 degrees. A suggestion is to improve the interpolation to be able to return negative values.
+
+
+
+*/
